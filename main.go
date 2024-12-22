@@ -8,14 +8,15 @@ import (
 )
 
 type Message struct {
-	Type     string `json:"type"`
-	Username string `json:"username"`
-	Text     string `json:"text,omitempty"`
-	RoomID   string `json:"room_id,omitempty"`
+	Type          string   `json:"type"`
+	Username      string   `json:"username"`
+	Text          string   `json:"text,omitempty"`
+	RoomID        string   `json:"room_id,omitempty"`
+	ActiveMembers []string `json:"active_members,omitempty"` // List of active members
 }
 
 var (
-	clients   = make(map[*websocket.Conn]string)          // Track client connections and their rooms
+	clients   = make(map[*websocket.Conn]string)          // Track client connections and their usernames
 	rooms     = make(map[string]map[*websocket.Conn]bool) // Rooms with connected clients
 	broadcast = make(chan Message)                        // Broadcast channel
 	upgrader  = websocket.Upgrader{                       // WebSocket upgrader
@@ -48,18 +49,25 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Extract room ID from the URL query parameter
+	// Extract room ID and username from URL query parameters
 	roomID := r.URL.Query().Get("room_id")
+	username := r.URL.Query().Get("username") // Ensure that the client sends the username
 	if roomID == "" {
 		roomID = "default" // If no room ID is provided, assign to default room
 	}
+	if username == "" {
+		username = "Anonymous" // Default username if not provided
+	}
 
-	// Assign client to room
-	clients[conn] = roomID
+	// Assign client to room and store their username
+	clients[conn] = username
 	if rooms[roomID] == nil {
 		rooms[roomID] = make(map[*websocket.Conn]bool)
 	}
 	rooms[roomID][conn] = true
+
+	// Notify all users about active members
+	updateActiveMembers(roomID)
 
 	// Listen for incoming messages
 	for {
@@ -88,6 +96,26 @@ func handleMessages() {
 				delete(rooms[msg.RoomID], client)
 				delete(clients, client)
 			}
+		}
+	}
+}
+
+// Update active members list in the room
+func updateActiveMembers(roomID string) {
+	activeMembers := []string{}
+	for client := range rooms[roomID] {
+		activeMembers = append(activeMembers, clients[client]) // Use username instead of room ID
+	}
+
+	// Broadcast the active members list to all clients in the room
+	for client := range rooms[roomID] {
+		err := client.WriteJSON(Message{
+			Type:          "active-members",
+			RoomID:        roomID,
+			ActiveMembers: activeMembers,
+		})
+		if err != nil {
+			log.Printf("Error sending active members update: %v", err)
 		}
 	}
 }

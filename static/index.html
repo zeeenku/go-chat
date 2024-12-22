@@ -13,6 +13,9 @@
         #username { width: 20%; margin-right: 10px; }
         #message { flex: 1; margin-right: 10px; }
         #send-btn { padding: 5px 15px; }
+        #active-members { margin-top: 20px; }
+        #active-members h3 { margin: 0; font-size: 18px; }
+        #active-members ul { list-style: none; padding: 0; }
     </style>
 </head>
 <body>
@@ -22,19 +25,26 @@
         <input type="text" id="message" placeholder="Type a message">
         <button id="send-btn">Send</button>
     </div>
+    
+    <div id="active-members">
+        <h3>Active Members:</h3>
+        <ul id="members-list"></ul>
+    </div>
 
     <script>
         const chatBox = document.getElementById("chat-box");
         const usernameInput = document.getElementById("username");
         const messageInput = document.getElementById("message");
         const sendBtn = document.getElementById("send-btn");
-
+        const membersList = document.getElementById("members-list");
 
         const typingIndicator = document.createElement("div");
         typingIndicator.id = "typing-indicator";
         typingIndicator.style.color = "#555";
         chatBox.appendChild(typingIndicator);
 
+        const username = prompt("Please enter your Username:");
+        usernameInput.value = username;
         // Prompt the user for the room ID
         const roomID = prompt("Please enter a Room ID:");
 
@@ -43,10 +53,9 @@
             window.location.reload(); // Reload if no room ID is provided
         }
 
-
         let typingTimeout;
         let typingUsers = []; // Array to track usernames currently typing
-    
+
         function updateTypingIndicator() {
             if (typingUsers.length > 0) {
                 typingIndicator.textContent = `${typingUsers.join(", ")} typing...`;
@@ -55,38 +64,55 @@
             }
         }
 
+        function updateActiveMembers(members) {
+            membersList.innerHTML = "";
+            members.filter(el=> el !== usernameInput.value).forEach(username => {
+                const listItem = document.createElement("li");
+                listItem.textContent = username;
+                membersList.appendChild(listItem);
+            });
+        }
+
         // Connect to WebSocket server with the dynamic room ID
-        const ws = new WebSocket(`ws://${location.host}/ws?room_id=${roomID}`);
+        const ws = new WebSocket(`ws://${location.host}/ws?room_id=${roomID}&username=${usernameInput.value}`);
 
         ws.onmessage = function (event) {
             const msg = JSON.parse(event.data);
-            
+        
             if (msg.type === "message") {
+                // Display the message in the chat box
                 const msgElement = document.createElement("div");
                 msgElement.className = "msg";
                 msgElement.innerHTML = `<span class="username">${msg.username}:</span> ${msg.text}`;
                 chatBox.appendChild(msgElement);
                 chatBox.scrollTop = chatBox.scrollHeight;
-    
+        
                 // Remove user from typingUsers when they send a message
                 typingUsers = typingUsers.filter(user => user !== msg.username);
                 updateTypingIndicator();
+            } else if (msg.type === "active-members") {
+                console.log(msg)
+                // Display active members if present
+                if (msg.active_members) {
+                    // typingIndicator.textContent = `Active members: ${msg.active_members.join(", ")}`;
+                    updateActiveMembers(msg.active_members);
+
+                }
             } else if (msg.type === "typing") {
                 if (msg.username) {
                     if (!typingUsers.includes(msg.username) && msg.username !== usernameInput.value.trim()) {
-                        typingUsers.push(msg.username); // Add user to the list if not already present
+                        typingUsers.push(msg.username);
                     }
                     updateTypingIndicator();
                 }
             } else if (msg.type === "stop-typing") {
                 if (msg.username) {
-                    typingUsers = typingUsers.filter(user => user !== msg.username); // Remove the user from the typingUsers array
-                    updateTypingIndicator(); // Ensure the typing indicator is updated after stopping typing
+                    typingUsers = typingUsers.filter(user => user !== msg.username);
+                    updateTypingIndicator();
                 }
             }
         };
-
-
+        
 
         sendBtn.addEventListener("click", function () {
             const username = usernameInput.value.trim();
@@ -101,7 +127,7 @@
         messageInput.addEventListener("input", function () {
             const username = usernameInput.value.trim();
             const text = messageInput.value.trim();
-        
+
             if (username && text.length > 0) {
                 // Notify that the user is typing
                 ws.send(JSON.stringify({ type: "typing", username }));
@@ -109,7 +135,7 @@
                 // Notify that the user has stopped typing
                 ws.send(JSON.stringify({ type: "stop-typing", username }));
             }
-        
+
             clearTimeout(typingTimeout);
             typingTimeout = setTimeout(() => {
                 if (text.length === 0) {
