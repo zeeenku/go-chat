@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+        #chat-box { height: 300px; border: 1px solid #ccc; overflow-y: scroll; padding: 10px; }
+        .msg { margin: 5px 0; }
+        .msg .username { font-weight: bold; color: #007BFF; }
+        #input-box { display: flex; padding: 10px; border-top: 1px solid #ccc; }
+        #username { width: 20%; margin-right: 10px; }
+        #message { flex: 1; margin-right: 10px; }
+        #send-btn { padding: 5px 15px; }
+        #active-members { margin-top: 20px; }
+        #active-members h3 { margin: 0; font-size: 18px; }
+        #active-members ul { list-style: none; padding: 0; }
+        #leave-btn { margin-top: 10px; padding: 5px 15px; background-color: red; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+    class Welcome {
+        constructor() {
+            this.mount();
+            this.init();
+        }
+
+        init() {
+            let username = localStorage.getItem('username');
+            let password = localStorage.getItem('password');
+
+            if (!username || !password) {
+                // Prompt for username and password if not found in localStorage
+                username = prompt("Please enter your Username:");
+                password = prompt("Please enter your Password:");
+
+                // Send credentials to backend for validation
+                fetch("/validate-credentials", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // If valid, store credentials in localStorage
+                        localStorage.setItem('username', username);
+                        localStorage.setItem('password', password);
+                        alert("Credentials validated successfully!");
+                        page = new DiscussionsPage();
+                    } else {
+                        alert(data.error); // Show error if invalid
+                        this.init(); // Reload to prompt again
+                    }
+                })
+                .catch(error => {
+                    console.error('Error validating credentials:', error);
+                    alert("An error occurred during validation.");
+                    this.init(); // Reload if there's an error
+                });
+            } else {
+                alert("Welcome back!");
+            }
+        }
+
+        mount() {
+            document.getElementById("app").innerHTML = ``;
+        }
+    }
+
+    const page = new Welcome();
+
+    class DiscussionsPage {
+        constructor() {
+            this.mount();
+            this.init();
+        }
+
+        init() {
+            let username = localStorage.getItem('username');
+            let password = localStorage.getItem('password');
+
+            document.getElementById('create-room-btn').addEventListener('click', function () {
+                const roomName = document.getElementById('room-name').value;
+                if (!roomName) {
+                    alert("Room name is required!");
+                    return;
+                }
+
+                // Send room creation request to backend
+                fetch("/create-room", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Basic ${btoa(username + ":" + password)}`
+                    },
+                    body: JSON.stringify({ room_name: roomName })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Room created successfully!");
+                        // Fetch room data (messages, room name, etc.)
+                        this.fetchRoomData(data.roomId);
+                    } else {
+                        alert(data.error); // Show error if any
+                    }
+                })
+                .catch(error => {
+                    console.error('Error creating room:', error);
+                    alert("An error occurred while creating the room.");
+                });
+            });
+        }
+
+        fetchRoomData(roomId) {
+            let username = localStorage.getItem('username');
+            let password = localStorage.getItem('password');
+
+            // Fetch room data (messages, room name, etc.)
+            fetch(`/get-room-data/${roomId}`, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Basic ${btoa(username + ":" + password)}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Display room name and messages
+                    page = new Room(data.roomId, data.roomName, data.messages);
+                } else {
+                    alert("Failed to fetch room data");
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching room data:', error);
+                alert("An error occurred while fetching room data.");
+            });
+        }
+
+        mount() {
+            document.getElementById("app").innerHTML = `
+                <div id="room-creation-form">
+                    <h3>Create a Room</h3>
+                    <input type="text" id="room-name" placeholder="Room Name" required />
+                    <button id="create-room-btn">Create Room</button>
+                </div>
+            `;
+        }
+    }
+
+    class Room {
+        constructor(roomId, roomName, messages) {
+            this.mount(roomId, roomName, messages);
+            this.init(roomId);
+        }
+
+        init(roomId) {
+            const chatBox = document.getElementById("chat-box");
+            const messageInput = document.getElementById("message");
+            const sendBtn = document.getElementById("send-btn");
+            const membersList = document.getElementById("members-list");
+            const leaveBtn = document.getElementById("leave-btn");
+
+            const typingIndicator = document.createElement("div");
+            typingIndicator.id = "typing-indicator";
+            typingIndicator.style.color = "#555";
+            chatBox.appendChild(typingIndicator);
+
+            let username = localStorage.getItem('username');
+            let password = localStorage.getItem('password');
+
+            let typingTimeout;
+            let typingUsers = [];
+
+            function updateTypingIndicator() {
+                if (typingUsers.length > 0) {
+                    typingIndicator.textContent = `${typingUsers.join(", ")} typing...`;
+                } else {
+                    typingIndicator.textContent = "";
+                }
+            }
+
+            function updateActiveMembers(members) {
+                membersList.innerHTML = "";
+                members.filter(el => el !== username).forEach(username => {
+                    const listItem = document.createElement("li");
+                    listItem.textContent = username;
+                    membersList.appendChild(listItem);
+                });
+            }
+
+            const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+            const ws = new WebSocket(`${protocol}://${location.host}/ws?room_id=${roomId}&username=${username}`);
+
+
+            ws.onmessage = function (event) {
+                const msg = JSON.parse(event.data);
+
+                if (msg.type === "message") {
+                    const msgElement = document.createElement("div");
+                    msgElement.className = "msg";
+                    msgElement.innerHTML = `<span class="username">${msg.username}:</span> ${msg.text}`;
+                    chatBox.appendChild(msgElement);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+
+                    typingUsers = typingUsers.filter(user => user !== msg.username);
+                    updateTypingIndicator();
+                } else if (msg.type === "active-members") {
+                    if (msg.active_members) {
+                        updateActiveMembers(msg.active_members);
+                    }
+                } else if (msg.type === "typing") {
+                    if (msg.username && !typingUsers.includes(msg.username) && msg.username !== username.trim()) {
+                        typingUsers.push(msg.username);
+                    }
+                    updateTypingIndicator();
+                } else if (msg.type === "stop-typing") {
+                    if (msg.username) {
+                        typingUsers = typingUsers.filter(user => user !== msg.username);
+                        updateTypingIndicator();
+                    }
+                }
+            };
+
+            sendBtn.addEventListener("click", function () {
+                const text = messageInput.value.trim();
+                if (username && text) {
+                    ws.send(JSON.stringify({ type: "message", username, text }));
+                    messageInput.value = "";
+                    ws.send(JSON.stringify({ type: "stop-typing", username }));
+                }
+            });
+
+            messageInput.addEventListener("input", function () {
+                const text = messageInput.value.trim();
+
+                if (username && text.length > 0) {
+                    ws.send(JSON.stringify({ type: "typing", username }));
+                } else {
+                    ws.send(JSON.stringify({ type: "stop-typing", username }));
+                }
+
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    if (text.length === 0) {
+                        ws.send(JSON.stringify({ type: "stop-typing", username }));
+                    }
+                }, 1000);
+            });
+
+            leaveBtn.addEventListener("click", function () {
+                ws.send(JSON.stringify({ type: "leave", username: username }));
+                window.location.reload(); // Refresh after leaving
+            });
+        }
+
+        mount(roomId, roomName, messages) {
+            document.getElementById("app").innerHTML = `
+                <h2>${roomName}</h2>
+                <div id="chat-box">
+                    ${messages.map(msg => `<div class="msg"><span class="username">${msg.username}:</span> ${msg.text}</div>`).join('')}
+                </div>
+                <div id="input-box">
+                    <input type="text" id="message" placeholder="Type a message">
+                    <button id="send-btn">Send</button>
+                </div>
+                <div id="active-members">
+                    <h3>Active Members:</h3>
+                    <ul id="members-list"></ul>
+                </div>
+                <button id="leave-btn">Leave Chat</button>
+            `;
+        }
+    }
+</script>
+</body>
+</html>
