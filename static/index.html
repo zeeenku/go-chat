@@ -28,30 +28,72 @@
         const usernameInput = document.getElementById("username");
         const messageInput = document.getElementById("message");
         const sendBtn = document.getElementById("send-btn");
-
+    
+        const typingIndicator = document.createElement("div");
+        typingIndicator.id = "typing-indicator";
+        typingIndicator.style.color = "#555";
+        chatBox.appendChild(typingIndicator);
+    
         const ws = new WebSocket(`ws://${location.host}/ws`);
-
+        let typingTimeout;
+        let typingUsers = []; // Array to track usernames currently typing
+    
+        function updateTypingIndicator() {
+            if (typingUsers.length > 0) {
+                typingIndicator.textContent = `${typingUsers.join(", ")} typing...`;
+            } else {
+                typingIndicator.textContent = ""; // Clear when no one is typing
+            }
+        }
+    
         ws.onmessage = function (event) {
             const msg = JSON.parse(event.data);
-            const msgElement = document.createElement("div");
-            msgElement.className = "msg";
-            msgElement.innerHTML = `<span class="username">${msg.username}:</span> ${msg.text}`;
-            chatBox.appendChild(msgElement);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            if (msg.type === "message") {
+                const msgElement = document.createElement("div");
+                msgElement.className = "msg";
+                msgElement.innerHTML = `<span class="username">${msg.username}:</span> ${msg.text}`;
+                chatBox.appendChild(msgElement);
+                chatBox.scrollTop = chatBox.scrollHeight;
+    
+                // Remove user from typingUsers when they send a message
+                typingUsers = typingUsers.filter(user => user !== msg.username);
+                updateTypingIndicator();
+            } else if (msg.type === "typing") {
+                if (msg.username) {
+                    if (!typingUsers.includes(msg.username) && 
+                    // not current user
+                    msg.username !== usernameInput.value.trim) {
+                        typingUsers.push(msg.username); // Add user to the list if not already present
+                    }
+                } else {
+                    typingUsers = typingUsers.filter(user => user !== msg.username); // Remove user
+                }
+                updateTypingIndicator();
+            }
         };
-
+    
         sendBtn.addEventListener("click", function () {
             const username = usernameInput.value.trim();
             const text = messageInput.value.trim();
             if (username && text) {
-                ws.send(JSON.stringify({ username, text }));
+                ws.send(JSON.stringify({ type: "message", username, text }));
                 messageInput.value = "";
+                ws.send(JSON.stringify({ type: "typing", username: "" })); // Clear typing indicator for this user
             }
         });
-
-        messageInput.addEventListener("keypress", function (e) {
-            if (e.key === "Enter") sendBtn.click();
+    
+        messageInput.addEventListener("keypress", function () {
+            const username = usernameInput.value.trim();
+            if (username) {
+                ws.send(JSON.stringify({ type: "typing", username }));
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    ws.send(JSON.stringify({ type: "typing", username: "" })); // Clear typing indicator
+                }, 1000);
+            }
         });
     </script>
+    
 </body>
 </html>
