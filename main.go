@@ -32,8 +32,8 @@ func main() {
 
 	go handleMessages()
 
-	log.Println("Server started on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Println("Server started on :7777")
+	log.Fatal(http.ListenAndServe(":7777", nil))
 }
 
 func serveHome(w http.ResponseWriter, r *http.Request) {
