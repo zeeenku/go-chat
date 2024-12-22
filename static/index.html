@@ -61,15 +61,16 @@
                 updateTypingIndicator();
             } else if (msg.type === "typing") {
                 if (msg.username) {
-                    if (!typingUsers.includes(msg.username) && 
-                    // not current user
-                    msg.username !== usernameInput.value.trim) {
+                    if (!typingUsers.includes(msg.username) && msg.username !== usernameInput.value.trim()) {
                         typingUsers.push(msg.username); // Add user to the list if not already present
                     }
-                } else {
-                    typingUsers = typingUsers.filter(user => user !== msg.username); // Remove user
+                    updateTypingIndicator();
                 }
-                updateTypingIndicator();
+            } else if (msg.type === "stop-typing") {
+                if (msg.username) {
+                    typingUsers = typingUsers.filter(user => user !== msg.username); // Remove the user from the typingUsers array
+                    updateTypingIndicator(); // Ensure the typing indicator is updated after stopping typing
+                }
             }
         };
     
@@ -79,20 +80,31 @@
             if (username && text) {
                 ws.send(JSON.stringify({ type: "message", username, text }));
                 messageInput.value = "";
-                ws.send(JSON.stringify({ type: "typing", username: "" })); // Clear typing indicator for this user
+                ws.send(JSON.stringify({ type: "stop-typing", username })); // Clear typing indicator for this user
             }
         });
-    
-        messageInput.addEventListener("keypress", function () {
+
+        messageInput.addEventListener("input", function () {
             const username = usernameInput.value.trim();
-            if (username) {
+            const text = messageInput.value.trim();
+        
+            if (username && text.length > 0) {
+                // Notify that the user is typing
                 ws.send(JSON.stringify({ type: "typing", username }));
-                clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(() => {
-                    ws.send(JSON.stringify({ type: "typing", username: "" })); // Clear typing indicator
-                }, 1000);
+            } else {
+                // Notify that the user has stopped typing
+                ws.send(JSON.stringify({ type: "stop-typing", username }));
             }
+        
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                if (text.length === 0) {
+                    // If the message is empty, notify the server to stop showing the typing indicator
+                    ws.send(JSON.stringify({ type: "stop-typing", username }));
+                }
+            }, 1000);
         });
+        
     </script>
     
 </body>
