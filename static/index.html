@@ -28,13 +28,22 @@
         const usernameInput = document.getElementById("username");
         const messageInput = document.getElementById("message");
         const sendBtn = document.getElementById("send-btn");
-    
+
+
         const typingIndicator = document.createElement("div");
         typingIndicator.id = "typing-indicator";
         typingIndicator.style.color = "#555";
         chatBox.appendChild(typingIndicator);
-    
-        const ws = new WebSocket(`ws://${location.host}/ws`);
+
+        // Prompt the user for the room ID
+        const roomID = prompt("Please enter a Room ID:");
+
+        if (!roomID) {
+            alert("Room ID is required!");
+            window.location.reload(); // Reload if no room ID is provided
+        }
+
+
         let typingTimeout;
         let typingUsers = []; // Array to track usernames currently typing
     
@@ -45,7 +54,10 @@
                 typingIndicator.textContent = ""; // Clear when no one is typing
             }
         }
-    
+
+        // Connect to WebSocket server with the dynamic room ID
+        const ws = new WebSocket(`ws://${location.host}/ws?room_id=${roomID}`);
+
         ws.onmessage = function (event) {
             const msg = JSON.parse(event.data);
             
@@ -73,7 +85,9 @@
                 }
             }
         };
-    
+
+
+
         sendBtn.addEventListener("click", function () {
             const username = usernameInput.value.trim();
             const text = messageInput.value.trim();
@@ -104,8 +118,6 @@
                 }
             }, 1000);
         });
-        
     </script>
-    
 </body>
 </html>
