@@ -79,7 +79,7 @@
 
         // Connect to WebSocket server with the dynamic room ID
         const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new WebSocket(`${protocol}://${location.host}/ws?room_id=${roomId}&username=${username}`);
+        const ws = new WebSocket(`${protocol}://${location.host}/ws?room_id=${roomID}&username=${username}`);
 
         ws.onmessage = function (event) {
             const msg = JSON.parse(event.data);
