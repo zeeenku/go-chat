@@ -16,6 +16,7 @@
         #active-members { margin-top: 20px; }
         #active-members h3 { margin: 0; font-size: 18px; }
         #active-members ul { list-style: none; padding: 0; }
+        #leave-btn { margin-top: 10px; padding: 5px 15px; background-color: red; color: white; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -31,12 +32,15 @@
         <ul id="members-list"></ul>
     </div>
 
+    <button id="leave-btn">Leave Chat</button>
+
     <script>
         const chatBox = document.getElementById("chat-box");
         const usernameInput = document.getElementById("username");
         const messageInput = document.getElementById("message");
         const sendBtn = document.getElementById("send-btn");
         const membersList = document.getElementById("members-list");
+        const leaveBtn = document.getElementById("leave-btn");
 
         const typingIndicator = document.createElement("div");
         typingIndicator.id = "typing-indicator";
@@ -66,7 +70,7 @@
 
         function updateActiveMembers(members) {
             membersList.innerHTML = "";
-            members.filter(el=> el !== usernameInput.value).forEach(username => {
+            members.filter(el => el !== usernameInput.value).forEach(username => {
                 const listItem = document.createElement("li");
                 listItem.textContent = username;
                 membersList.appendChild(listItem);
@@ -94,9 +98,7 @@
                 console.log(msg)
                 // Display active members if present
                 if (msg.active_members) {
-                    // typingIndicator.textContent = `Active members: ${msg.active_members.join(", ")}`;
                     updateActiveMembers(msg.active_members);
-
                 }
             } else if (msg.type === "typing") {
                 if (msg.username) {
@@ -112,7 +114,6 @@
                 }
             }
         };
-        
 
         sendBtn.addEventListener("click", function () {
             const username = usernameInput.value.trim();
@@ -143,6 +144,11 @@
                     ws.send(JSON.stringify({ type: "stop-typing", username }));
                 }
             }, 1000);
+        });
+
+        leaveBtn.addEventListener("click", function () {
+            ws.send(JSON.stringify({ type: "leave", username: usernameInput.value }));
+            window.location.reload(); // Refresh the page after leaving
         });
     </script>
 </body>

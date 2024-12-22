@@ -77,6 +77,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 			log.Printf("WebSocket read error: %v", err)
 			delete(rooms[roomID], conn)
 			delete(clients, conn)
+			updateActiveMembers(roomID) // Update active members after a user leaves
 			break
 		}
 		msg.RoomID = roomID // Set room ID for the message
