@@ -17,8 +17,8 @@ git pull origin main
 
 # js and ui dependencies
 cd ./frontend
-pnpm install
-pnpm run build
+npm install
+npm run build
 
 # 2. Download dependencies (if Go modules are used)
 echo "Downloading dependencies..."
