@@ -13,7 +13,7 @@
             </div>
 
         </div>
-    <div ref="chatBox" id="chat-box" style="height:calc(100vh - 8rem);">
+    <div ref="chatBox" id="chat-box" style="height:calc(100dvh - 8rem);">
 
 
   
@@ -25,7 +25,7 @@
         <div class="max-w-[90%] w-fit" :class="msg.username == username ? 'ms-auto' : 'me-auto'">
         <div 
         :class="msg.username == username ? ' bg-cyan-500  text-white' : 'bg-gray-100 '"
-        class="text-sm break-words px-2 py-1  rounded-full mb-1 justify-start items-center gap-3 inline-flex">
+        class="text-base break-words px-2 py-1  rounded-full mb-1 justify-start items-center gap-3 inline-flex">
         <!-- <h5 class="text-gray-900 text-sm font-normal leading-snug">Let me know</h5> -->
             {{ msg.text }}
     </div>
@@ -206,6 +206,7 @@ const sendMessage = () => {
     ws.send(
         JSON.stringify({ type: "stop-typing", username: username.trim() })
     );
+    chatBox.value.scrollTop = chatBox.value.scrollHeight;
     msgInput.value.focus();
     }
 };
