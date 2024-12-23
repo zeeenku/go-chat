@@ -1,20 +1,38 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/gorilla/websocket"
+	_ "github.com/mattn/go-sqlite3"
 )
 
+// Structs for handling WebSocket messages
 type Message struct {
 	Type          string   `json:"type"`
 	Username      string   `json:"username"`
 	Text          string   `json:"text,omitempty"`
 	RoomID        string   `json:"room_id,omitempty"`
-	ActiveMembers []string `json:"active_members,omitempty"` // List of active members
+	ActiveMembers []string `json:"active_members,omitempty"`
 }
 
+// Struct for the login request
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// Struct for the login response
+type LoginResponse struct {
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
+}
+
+// Global variables
 var (
 	clients   = make(map[*websocket.Conn]string)          // Track client connections and their usernames
 	rooms     = make(map[string]map[*websocket.Conn]bool) // Rooms with connected clients
@@ -27,11 +45,19 @@ var (
 )
 
 func main() {
+	// Initialize the user table in the SQLite database
+	createUserTable()
+
+	// WebSocket and other routes
 	http.HandleFunc("/", serveHome)
 	http.HandleFunc("/ws", handleConnections)
 
+	// Add the login route
+	http.HandleFunc("/login", handleLogin)
+
 	go handleMessages()
 
+	// Start the HTTP server
 	log.Println("Server started on :7777")
 	log.Fatal(http.ListenAndServe(":7777", nil))
 }
@@ -118,5 +144,93 @@ func updateActiveMembers(roomID string) {
 		if err != nil {
 			log.Printf("Error sending active members update: %v", err)
 		}
+	}
+}
+
+// Helper function to create the SQLite users table if not exists
+func createUserTable() {
+	// Open SQLite database
+	db, err := sql.Open("sqlite3", "./users.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Create the users table if it doesn't exist
+	query := `
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		username TEXT UNIQUE NOT NULL,
+		password TEXT NOT NULL,
+		push_data TEXT
+	);`
+	_, err = db.Exec(query)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Users table created or already exists.")
+}
+
+// Helper function to validate the username (basic alphanumeric + underscore)
+func isValidUsername(username string) bool {
+	re := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+	return re.MatchString(username)
+}
+
+// Route for handling login and user creation
+func handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse the incoming JSON body for the login request
+	var req LoginRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the username
+	if !isValidUsername(req.Username) {
+		http.Error(w, "Invalid username format", http.StatusBadRequest)
+		return
+	}
+
+	// Open SQLite database
+	db, err := sql.Open("sqlite3", "./users.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Check if the user exists in the database
+	var existingPassword, pushData string
+	var userExists bool
+
+	// Query to check if the user exists
+	err = db.QueryRow("SELECT password, push_data FROM users WHERE username = ?", req.Username).Scan(&existingPassword, &pushData)
+	if err == sql.ErrNoRows {
+		// User does not exist, create a new user
+		_, err := db.Exec("INSERT INTO users (username, password, push_data) VALUES (?, ?, ?)", req.Username, req.Password, "")
+		if err != nil {
+			http.Error(w, "Failed to create user", http.StatusInternalServerError)
+			return
+		}
+		// Respond with success
+		json.NewEncoder(w).Encode(LoginResponse{Success: true})
+		return
+	} else if err != nil {
+		log.Fatal(err)
+	}
+
+	// Check if the password matches
+	if existingPassword == req.Password {
+		// Login success
+		json.NewEncoder(w).Encode(LoginResponse{Success: true})
+	} else {
+		// Incorrect password
+		http.Error(w, "Incorrect password", http.StatusUnauthorized)
 	}
 }
