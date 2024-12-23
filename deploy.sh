@@ -26,7 +26,7 @@ go mod tidy   # Ensures all dependencies are fetched
 
 # 3. Build the Go application
 echo "Building the Go application..."
-go build -o $GO_BINARY main.go
+go build -o $GO_BINARY main-2.go
 
 # 4. Reload systemd and restart the service
 echo "Restarting service..."

@@ -75,8 +75,8 @@ func main() {
 	go handleMessages()
 
 	// Start the HTTP server
-	log.Println("Server started on :7777")
-	log.Fatal(http.ListenAndServe(":7777", allowAllOrigins(http.DefaultServeMux)))
+	log.Println("Server started on :7778")
+	log.Fatal(http.ListenAndServe(":7778", allowAllOrigins(http.DefaultServeMux)))
 }
 
 // CORS middleware to allow all origins
