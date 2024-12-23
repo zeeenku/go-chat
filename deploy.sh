@@ -4,7 +4,7 @@
 set -e
 
 # Log output to a file
-exec >> /var/log/deploy.log 2>&1
+# exec >> /var/log/deploy.log 2>&1
 
 # Variables
 PROJECT_DIR="/var/www/go-chat-2"
