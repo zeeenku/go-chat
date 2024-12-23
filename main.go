@@ -48,25 +48,30 @@ func main() {
 	// Initialize the user table in the SQLite database
 	createUserTable()
 
-	// WebSocket and other routes
-	fs := http.FileServer(http.Dir("./frontend/dist")) // Point to the directory containing your static files
-	http.Handle("/frotnend/dist/", http.StripPrefix("/frotnend/dist/", fs))
+	fs := http.FileServer(http.Dir("./frontend/dist"))
+	http.Handle("/", fs)
 
-	http.HandleFunc("/", serveHome)
+	// // Handle SPA routes - if the file doesn't exist, serve index.html
+	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// 	http.ServeFile(w, r, "./frontend/dist/index.html")
+	// })
+
+	// http.HandleFunc("/", serveHome)
+
+	// func serveHome(w http.ResponseWriter, r *http.Request) {
+	// 	http.ServeFile(w, r, "./frontend/dist/index.html")
+	// }
+
 	http.HandleFunc("/ws", handleConnections)
 
 	// Add the login route
-	http.HandleFunc("/login", handleLogin)
+	http.HandleFunc("/verify-login", handleLogin)
 
 	go handleMessages()
 
 	// Start the HTTP server
 	log.Println("Server started on :7777")
 	log.Fatal(http.ListenAndServe(":7777", nil))
-}
-
-func serveHome(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "./frontend/dist/index.html")
 }
 
 func handleConnections(w http.ResponseWriter, r *http.Request) {

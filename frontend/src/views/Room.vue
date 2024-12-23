@@ -1,25 +1,36 @@
 <template>
     <div class="relative h-screen pt-[4rem] max-w-[30rem] w-full mx-auto">
         <div style="height:4rem;" class="absolute border px-3 items-center justify-between gap-x-1 top-0 left-0 w-full p-2 flex">
-            <div>id: {{ roomID }}</div>
-            <div v-if="activeMembers">
-                Active:
-                <ul id="members-list">
-                    <li v-for="(member, index) in activeMembers" :key="index">
+            <div class="italic text-slate-800">
+                You, 
+                <span v-if="activeMembers" id="members-list flex" >
+                    <span v-for="(member, index) in activeMembers" :key="index">
                         {{ member }}
-                    </li>
-                </ul>
+                        <span v-if="index<activeMembers.length-1">,</span>
+                    </span>
+                </span>
             </div>
+
+            <div class="bg-slate-900 rounded-md px-1 py-0.5 text-white">id: {{ roomID }}</div>
         </div>
-    <div id="chat-box" style="height:calc(100vh - 9rem);">
+    <div ref="chatBox" id="chat-box" style="height:calc(100vh - 9rem);">
 
 
   
         <div v-if="!messages.length" class="mx-auto text-center">No messages yet</div>
-        <div v-else v-for="(msg, index) in messages" :key="index" class="msg">
-        <span class="username">{{ msg.username }}:</span> {{ msg.text }}
-        </div>
 
+        <div v-else v-for="(msg, index) in messages" :key="index">
+        <div 
+        :class="msg.username == username ? 'bg-blue text-white' : 'bg-gray-100 '"
+        class="text-sm mt-1 break-words px-2 py-1 rounded justify-start items-center gap-3 inline-flex">
+        <!-- <h5 class="text-gray-900 text-sm font-normal leading-snug">Let me know</h5> -->
+            {{ msg.text }}
+    </div>
+    <div v-if="index == messages.length -1 || messages[index+1].username !== msg.username" class="username italic text-blue mt-0.5 text-xs">
+        {{ msg.username }}
+    </div>
+
+</div>
         <div v-if="typingUsers.length > 0" id="typing-indicator" style="color: #555;">
         {{ typingUsers.join(", ") }} typing...
         </div>
@@ -71,9 +82,10 @@ const protocol = location.protocol === "https:" ? "wss" : "ws";
 const ws = new WebSocket(
     `${protocol}://${location.host}/ws?room_id=${roomID}&password=${password}&username=${username}`
 );
-
+console.log(    `${protocol}://${location.host}/ws?room_id=${roomID}&password=${password}&username=${username}`)
 ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
+    console.log(msg)
 
     if (msg.type === "message") {
     messages.value.push({ username: msg.username, text: msg.text });

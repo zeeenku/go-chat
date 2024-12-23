@@ -6,6 +6,10 @@ const router = useRouter()
 
 const roomId = ref("")
 
+const logout = ()=>{
+    localStorage.clear();
+    router.push('/');
+}
 
 const submit = async () => {
     localStorage.setItem('roomID', roomId.value);
@@ -36,6 +40,9 @@ const submit = async () => {
                   <button type="submit" class="w-full text-white bg-slate-900 hover:bg-slate-900 focus:ring-4 focus:outline-none focus:ring-slate-900 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-slate-900 dark:hover:bg-slate-900 dark:focus:ring-slate-900">Join room</button>
 
               </form>
+
+              <button @click="logout" class="w-full text-white bg-slate-900 hover:bg-slate-900 focus:ring-4 focus:outline-none focus:ring-slate-900 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-slate-900 dark:hover:bg-slate-900 dark:focus:ring-slate-900">logout</button>
+
           </div>
       </div>
   </div>

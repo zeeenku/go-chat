@@ -45,8 +45,8 @@ const submit = async () => {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            localStorage.setItem('username', username);
-            localStorage.setItem('password', password);
+            localStorage.setItem('username', username.value);
+            localStorage.setItem('password', password.value);
             router.push('/home')
 
         } else {
