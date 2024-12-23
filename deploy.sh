@@ -8,7 +8,7 @@ exec >> /var/log/deploy.log 2>&1
 
 # Variables
 PROJECT_DIR="/var/www/go-chat-2"
-GO_BINARY="go-chat"          # Name of your Go binary
+GO_BINARY="go-chat-2"          # Name of your Go binary
 SERVICE_PATH="/etc/systemd/system/go-chat-2.service"
 
 # 1. Pull latest changes from Git repository
@@ -31,7 +31,7 @@ go build -o $GO_BINARY main.go
 # 4. Reload systemd and restart the service
 echo "Restarting service..."
 systemctl daemon-reload
-systemctl restart go-chat
+systemctl restart go-chat-2
 
 # 5. Restart nginx
 echo "Restarting nginx..."
