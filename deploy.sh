@@ -15,6 +15,11 @@ SERVICE_PATH="/etc/systemd/system/go-chat.service"
 cd $PROJECT_DIR
 git pull origin main
 
+# js and ui dependencies
+cd ./frontend
+pnpm install
+pnpm run build
+
 # 2. Download dependencies (if Go modules are used)
 echo "Downloading dependencies..."
 go mod tidy   # Ensures all dependencies are fetched
