@@ -51,6 +51,11 @@ func main() {
 	fs := http.FileServer(http.Dir("./frontend/dist"))
 	http.Handle("/", fs)
 
+	fs = http.StripPrefix("/sounds/", http.FileServer(http.Dir("./static/sounds")))
+
+	// Handle the "/sounds" route
+	http.Handle("/sounds/", fs)
+
 	// // Handle SPA routes - if the file doesn't exist, serve index.html
 	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 	// 	http.ServeFile(w, r, "./frontend/dist/index.html")
@@ -71,7 +76,23 @@ func main() {
 
 	// Start the HTTP server
 	log.Println("Server started on :7777")
-	log.Fatal(http.ListenAndServe(":7777", nil))
+	log.Fatal(http.ListenAndServe(":7777", allowAllOrigins(http.DefaultServeMux)))
+}
+
+// CORS middleware to allow all origins
+func allowAllOrigins(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle preflight requests (OPTIONS)
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func handleConnections(w http.ResponseWriter, r *http.Request) {
