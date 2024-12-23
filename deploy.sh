@@ -7,9 +7,9 @@ set -e
 exec >> /var/log/deploy.log 2>&1
 
 # Variables
-PROJECT_DIR="/var/www/go-chat"
+PROJECT_DIR="/var/www/go-chat-2"
 GO_BINARY="go-chat"          # Name of your Go binary
-SERVICE_PATH="/etc/systemd/system/go-chat.service"
+SERVICE_PATH="/etc/systemd/system/go-chat-2.service"
 
 # 1. Pull latest changes from Git repository
 cd $PROJECT_DIR
