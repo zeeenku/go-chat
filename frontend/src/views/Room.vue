@@ -1,5 +1,5 @@
 <template>
-    <div class="relative h-screen pt-[4rem] max-w-[30rem] w-full mx-auto">
+    <div class="relative h-[100dvh] pt-[4rem] max-w-[30rem] w-full mx-auto">
         <div style="height:4rem;" class="absolute border px-3 items-center justify-between gap-x-1 top-0 left-0 w-full p-2 flex">
             <div class="bg-slate-900 rounded-3xl px-2 text-sm font-medium py-0.5 text-white">room id: {{ roomID }}</div>
 
