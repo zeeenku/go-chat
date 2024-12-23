@@ -21,12 +21,13 @@ npm install
 npm run build
 
 # 2. Download dependencies (if Go modules are used)
+cd ../
 echo "Downloading dependencies..."
 go mod tidy   # Ensures all dependencies are fetched
 
 # 3. Build the Go application
 echo "Building the Go application..."
-go build -o $GO_BINARY main-2.go
+go build -o $GO_BINARY main.go
 
 # 4. Reload systemd and restart the service
 echo "Restarting service..."

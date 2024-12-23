@@ -76,7 +76,7 @@ func main() {
 
 	// Start the HTTP server
 	log.Println("Server started on :7778")
-	log.Fatal(http.ListenAndServe(":7778", allowAllOrigins(http.DefaultServeMux)))
+	log.Fatal(http.ListenAndServe(":7778", nil))
 }
 
 // CORS middleware to allow all origins
