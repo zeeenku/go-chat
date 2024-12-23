@@ -49,6 +49,9 @@ func main() {
 	createUserTable()
 
 	// WebSocket and other routes
+	fs := http.FileServer(http.Dir("./frontend/dist")) // Point to the directory containing your static files
+	http.Handle("/frotnend/dist/", http.StripPrefix("/frotnend/dist/", fs))
+
 	http.HandleFunc("/", serveHome)
 	http.HandleFunc("/ws", handleConnections)
 
@@ -63,7 +66,7 @@ func main() {
 }
 
 func serveHome(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "./static/index.html")
+	http.ServeFile(w, r, "./frontend/dist/index.html")
 }
 
 func handleConnections(w http.ResponseWriter, r *http.Request) {
@@ -75,14 +78,62 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Extract room ID and username from URL query parameters
+	// Extract room ID, username, and password from URL query parameters
 	roomID := r.URL.Query().Get("room_id")
-	username := r.URL.Query().Get("username") // Ensure that the client sends the username
+	username := r.URL.Query().Get("username")
+	password := r.URL.Query().Get("password") // Ensure that the client sends the password
+
 	if roomID == "" {
 		roomID = "default" // If no room ID is provided, assign to default room
 	}
-	if username == "" {
-		username = "Anonymous" // Default username if not provided
+
+	if username == "" || password == "" {
+		log.Println("Missing username or password")
+		conn.WriteJSON(Message{
+			Type: "error",
+			Text: "Username and password are required",
+		})
+		return
+	}
+
+	// Validate username and password with the database
+	db, err := sql.Open("sqlite3", "./users.db")
+	if err != nil {
+		log.Printf("Database connection error: %v", err)
+		conn.WriteJSON(Message{
+			Type: "error",
+			Text: "Internal server error",
+		})
+		return
+	}
+	defer db.Close()
+
+	var storedPassword string
+	err = db.QueryRow("SELECT password FROM users WHERE username = ?", username).Scan(&storedPassword)
+	if err == sql.ErrNoRows {
+		log.Printf("Invalid username: %s", username)
+		conn.WriteJSON(Message{
+			Type: "error",
+			Text: "Invalid username or password",
+		})
+		return
+	} else if err != nil {
+		log.Printf("Database query error: %v", err)
+		conn.WriteJSON(Message{
+			Type: "error",
+			Text: "Internal server error",
+		})
+		return
+	}
+
+	// Verify the password
+	if storedPassword != password {
+		log.Printf("Incorrect password for username: %s", username)
+		conn.WriteJSON(Message{
+			Type: "error",
+			Text: "Invalid username or password",
+		})
+		return
 	}
 
 	// Assign client to room and store their username
@@ -207,7 +258,6 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Check if the user exists in the database
 	var existingPassword, pushData string
-	var userExists bool
 
 	// Query to check if the user exists
 	err = db.QueryRow("SELECT password, push_data FROM users WHERE username = ?", req.Username).Scan(&existingPassword, &pushData)

@@ -7,9 +7,17 @@ const error = ref("")
 
 const username = ref(localStorage.getItem('username'))
 const password = ref(localStorage.getItem('password'))
-
 onBeforeMount(()=>{
     if(password.value && username.value){
+        const roomID = localStorage.getItem('roomID')
+        if(
+            roomID
+        )
+        {
+            router.push({name: 'Room', params: { id: roomID } });
+            return;
+        }
+
         router.push('/home')
         return ;
     }
@@ -17,11 +25,6 @@ onBeforeMount(()=>{
 
 const submit = async () => {
 
-    localStorage.setItem('username', username);
-    localStorage.setItem('password', password);
-    router.push('/home')
-
-    return;
         const credentials = {
         username: username.value,
         password: password.value
